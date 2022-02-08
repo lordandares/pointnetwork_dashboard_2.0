@@ -9,15 +9,16 @@ export const api = {
    * The function below can accessed using `window.Main.sendMessage`
    */
 
-  sendMessage: (message: string) => {
-    ipcRenderer.send('message', message)
+  send: (channel: string, message: string) => {
+    console.log('enra aqui')
+    ipcRenderer.send(channel, message)
   },
 
   /**
    * Provide an easier way to listen to events
    */
-  on: (channel: string, callback: Function) => {
-    ipcRenderer.on(channel, (_, data) => callback(data))
+  once: (channel: string, callback: Function) => {
+    ipcRenderer.once(channel, (_, data) => callback(data))
   }
 }
 

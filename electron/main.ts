@@ -1,57 +1,57 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
-
-let mainWindow: BrowserWindow | null
+import {app, BrowserWindow, ipcMain} from 'electron';
+import { SystemInfoChannel } from './Channels/SystemInfoChannel';
+import { IpcChannelInterface } from './IpcChannelInterface';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string
+class Main {
 
-// const assetsPath =
-//   process.env.NODE_ENV === 'production'
-//     ? process.resourcesPath
-//     : app.getAppPath()
+    
+  private mainWindow?: BrowserWindow;
 
-function createWindow () {
-  mainWindow = new BrowserWindow({
-    // icon: path.join(assetsPath, 'assets', 'icon.png'),
-    width: 1100,
-    height: 700,
-    backgroundColor: '#191622',
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY
+  public init(ipcChannels: IpcChannelInterface[]) {
+    app.on('ready', this.createWindow);
+    app.on('window-all-closed', this.onWindowAllClosed);
+    app.on('activate', this.onActivate);
+
+    this.registerIpcChannels(ipcChannels);
+  }
+
+  private registerIpcChannels(ipcChannels: IpcChannelInterface[]) {
+    ipcChannels.forEach(channel => ipcMain.on(channel.getName(), (event, request) => channel.handle(event, request)));
+  }
+
+  private onWindowAllClosed() {
+    if (process.platform !== 'darwin') {
+      app.quit();
     }
-  })
+  }
 
-  mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY)
+  private onActivate() {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      this.createWindow();
+    }
+  }
 
-  mainWindow.on('closed', () => {
-    mainWindow = null
-  })
+  private createWindow() {
+    this.mainWindow = new BrowserWindow({
+      height: 600,
+      width: 800,
+      title: `Yet another Electron Application`,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        enableRemoteModule: false,
+        preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY
+      }
+    });
+
+    this.mainWindow.webContents.openDevTools();
+    this.mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY)
+  }
 }
 
-async function registerListeners () {
-  /**
-   * This comes from bridge integration, check bridge.ts
-   */
-  ipcMain.on('message', (_, message) => {
-    console.log(message)
-  })
-}
-
-app.on('ready', createWindow)
-  .whenReady()
-  .then(registerListeners)
-  .catch(e => console.error(e))
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
-})
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
-  }
-})
+// Here we go!
+(new Main()).init([
+    new SystemInfoChannel()
+]);
